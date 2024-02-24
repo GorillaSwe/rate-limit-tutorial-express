@@ -1,12 +1,24 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { MemoryStore } from "express-rate-limit";
 
 // レートリミットの設定
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分
-  max: 100, // 15分間に100リクエストまで許可
-  standardHeaders: true, // RateLimitヘッダーに関する情報を返す
-  legacyHeaders: false, // 無効化されたRateLimitヘッダーを削除する
+  limit: 10, // 15分間に10リクエストまで許可
+  standardHeaders: true, // 標準的なRateLimitヘッダーに関する情報を返す
+  legacyHeaders: false, // 古い`X-RateLimit-*`ヘッダーを無効化
+  keyGenerator: (req) => req.ip || "unknown", // カスタムキージェネレーター、ここではリクエストを行ったクライアントのIPアドレスに基づく
+  handler: (req, res) => {
+    // レートリミットが超過した場合のハンドラー
+    res.status(429).json({
+      error: "You have been rate limited.",
+      message:
+        "Too many requests from this IP, please try again after 15 minutes",
+    });
+  },
+  store: new MemoryStore(), // MemoryStoreを使用してリクエストカウントを記録
+  skipFailedRequests: false, // 失敗したリクエストのカウントをスキップしない
+  skipSuccessfulRequests: false, // 成功したリクエストのカウントをスキップしない
 });
 
 const app = express();
